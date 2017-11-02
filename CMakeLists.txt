@@ -17,6 +17,57 @@ if (NOT DEFINED ENABLE_TOOLS AND EXISTS "${CMAKE_SOURCE_DIR}/Tools")
 endif ()
 
 # -----------------------------------------------------------------------------
+# On Windows, retrieve our additional dependencies and 'install' some ICU
+# files
+# -----------------------------------------------------------------------------
+
+if (WIN32)
+    set(ADDITIONAL_DEPENDENCIES_FILENAME WebKitLibraries.tar.gz)
+    set(FULL_ADDITIONAL_DEPENDENCIES_FILE ${CMAKE_CURRENT_SOURCE_DIR}/${ADDITIONAL_DEPENDENCIES_FILENAME})
+
+    message("Retrieving additional dependencies for QtWebKit...")
+
+    file(DOWNLOAD "https://github.com/opencor/qtwebkit/releases/download/${GIT_TAG}/${ADDITIONAL_DEPENDENCIES_FILENAME}" ${FULL_ADDITIONAL_DEPENDENCIES_FILE}
+         STATUS STATUS)
+
+    list(GET STATUS 0 STATUS_CODE)
+
+    if (${STATUS_CODE} EQUAL 0)
+        execute_process(COMMAND ${CMAKE_COMMAND} -E tar -xzf ${FULL_ADDITIONAL_DEPENDENCIES_FILE}
+                        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+                        OUTPUT_QUIET)
+
+        file(REMOVE ${FULL_ADDITIONAL_DEPENDENCIES_FILE})
+
+        set(ORIG_DIRNAME ${CMAKE_CURRENT_SOURCE_DIR}/WebKitLibraries/win/bin64)
+        set(DEST_DIRNAME ${FULL_LOCAL_EXTERNAL_PACKAGE_DIR}/bin)
+
+        execute_process(COMMAND ${CMAKE_COMMAND} -E copy ${ORIG_DIRNAME}/${ICUDT_SHARED_LIBRARY}
+                                                         ${DEST_DIRNAME}/${ICUDT_SHARED_LIBRARY})
+        execute_process(COMMAND ${CMAKE_COMMAND} -E copy ${ORIG_DIRNAME}/${ICUIN_SHARED_LIBRARY}
+                                                         ${DEST_DIRNAME}/${ICUIN_SHARED_LIBRARY})
+        execute_process(COMMAND ${CMAKE_COMMAND} -E copy ${ORIG_DIRNAME}/${ICUUC_SHARED_LIBRARY}
+                                                         ${DEST_DIRNAME}/${ICUUC_SHARED_LIBRARY})
+    else ()
+        file(REMOVE ${FULL_ADDITIONAL_DEPENDENCIES_FILE})
+        # Note: this is in case we had an HTTP error of sorts, in which case we
+        #       would end up with an empty file...
+
+        message(FATAL_ERROR "The additional dependencies could not be retrieved...")
+    endif ()
+endif ()
+
+# -----------------------------------------------------------------------------
+# Make sure that we can find our additional dependencies on Windows
+# -----------------------------------------------------------------------------
+if (WIN32)
+    set(WINDOWS_LIBRARIES ${CMAKE_SOURCE_DIR}/WebKitLibraries/win)
+
+    set(ENV{INCLUDE} "${WINDOWS_LIBRARIES}/include;$ENV{INCLUDE}")
+    set(ENV{LIB} "${WINDOWS_LIBRARIES}/lib64;$ENV{LIB}")
+endif ()
+
+# -----------------------------------------------------------------------------
 # Determine which port will be built
 # -----------------------------------------------------------------------------
 set(ALL_PORTS
