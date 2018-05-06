@@ -20,7 +20,6 @@ endif ()
 # On Windows, retrieve our additional dependencies and 'install' some ICU
 # files
 # -----------------------------------------------------------------------------
-
 if (WIN32)
     set(ADDITIONAL_DEPENDENCIES_FILENAME WebKitLibraries.tar.gz)
     set(FULL_ADDITIONAL_DEPENDENCIES_FILE ${CMAKE_CURRENT_SOURCE_DIR}/${ADDITIONAL_DEPENDENCIES_FILENAME})
