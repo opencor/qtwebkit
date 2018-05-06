@@ -32,7 +32,7 @@ if (WIN32)
     list(GET STATUS 0 STATUS_CODE)
 
     if (${STATUS_CODE} EQUAL 0)
-        execute_process(COMMAND ${CMAKE_COMMAND} -E tar -xzf ${FULL_ADDITIONAL_DEPENDENCIES_FILE}
+        execute_process(COMMAND ${CMAKE_COMMAND} -E tar -xf ${FULL_ADDITIONAL_DEPENDENCIES_FILE}
                         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
                         OUTPUT_QUIET)
 
