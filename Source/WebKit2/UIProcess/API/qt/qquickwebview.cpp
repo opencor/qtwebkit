@@ -38,7 +38,6 @@
 #include "QtWebPageEventHandler.h"
 #include "QtWebPagePolicyClient.h"
 #include "WebBackForwardList.h"
-#include "WebFindOptions.h"
 #if ENABLE(INSPECTOR_SERVER)
 #include "WebInspectorProxy.h"
 #include "WebInspectorServer.h"
@@ -75,7 +74,6 @@
 #include <WKOpenPanelResultListener.h>
 #include <WKPageConfigurationRef.h>
 #include <WKPageGroup.h>
-#include <WKPreferencesRef.h>
 #include <WKSerializedScriptValue.h>
 #include <WKString.h>
 #include <WKStringQt.h>
@@ -409,6 +407,7 @@ void QQuickWebViewPrivate::initialize(WKPageConfigurationRef configurationRef)
     preferences.setMediaSourceEnabled(false);
     preferences.setWebGLEnabled(true);
     preferences.setForceCompositingMode(true);
+    preferences.setAllowFileAccessFromFileURLs(true);
 
     webPageProxy->setURLSchemeHandlerForScheme(QrcSchemeHandler::create(), ASCIILiteral("qrc"));
 

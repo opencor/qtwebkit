@@ -23,8 +23,6 @@
 #include "WebPageGroup.h"
 #include "qquickwebview_p_p.h"
 #include "qwebpreferences_p_p.h"
-#include <WKPageConfigurationRef.h>
-#include <WKPageGroup.h>
 #include <WKPreferencesRef.h>
 #include <WKRetainPtr.h>
 #include <WKStringQt.h>
@@ -68,10 +66,6 @@ bool QWebPreferencesPrivate::testAttribute(QWebPreferencesPrivate::WebAttribute 
 #if ENABLE(WEBGL)
     case WebGLEnabled:
         return WKPreferencesGetWebGLEnabled(preferencesRef);
-#if ENABLE(CSS_SHADERS)
-    case CSSCustomFilterEnabled:
-        return WKPreferencesGetCSSCustomFilterEnabled(preferencesRef);
-#endif
 #endif
 #if ENABLE(WEB_AUDIO)
     case WebAudioEnabled:
@@ -137,11 +131,6 @@ void QWebPreferencesPrivate::setAttribute(QWebPreferencesPrivate::WebAttribute a
     case WebGLEnabled:
         WKPreferencesSetWebGLEnabled(preferencesRef, enable);
         break;
-#if ENABLE(CSS_SHADERS)
-    case CSSCustomFilterEnabled:
-        WKPreferencesSetCSSCustomFilterEnabled(preferencesRef, enable);
-        break;
-#endif
 #endif
 #if ENABLE(WEB_AUDIO)
     case WebAudioEnabled:

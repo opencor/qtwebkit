@@ -36,16 +36,12 @@
 #include <QProcess>
 #include <QString>
 #include <QtCore/qglobal.h>
-#include <wtf/HashSet.h>
-#include <wtf/PassRefPtr.h>
 #include <wtf/RunLoop.h>
-#include <wtf/Threading.h>
 #include <wtf/text/WTFString.h>
 
 #if defined(Q_OS_UNIX)
 #include <errno.h>
 #include <fcntl.h>
-#include <runtime/InitializeThreading.h>
 #include <string>
 #include <sys/resource.h>
 #include <sys/socket.h>
@@ -126,6 +122,12 @@ void ProcessLauncher::launchProcess()
         commandLine = QLatin1String("%1 \"%2\" %3 %4");
         QByteArray pluginProcessPrefix = qgetenv("QT_WEBKIT2_PP_CMD_PREFIX");
         commandLine = commandLine.arg(QLatin1String(pluginProcessPrefix.constData())).arg(QString(executablePathOfPluginProcess()));
+#endif
+#if ENABLE(DATABASE_PROCESS)
+    } else if (m_launchOptions.processType == ProcessType::Database) {
+        commandLine = QLatin1String("%1 \"%2\" %3 %4");
+        QByteArray processPrefix = qgetenv("QT_WEBKIT2_DP_CMD_PREFIX");
+        commandLine = commandLine.arg(QLatin1String(processPrefix.constData())).arg(QString(executablePathOfDatabaseProcess()));
 #endif
     } else {
         qDebug() << "Unsupported process type" << (int)m_launchOptions.processType;
