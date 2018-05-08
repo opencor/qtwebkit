@@ -64,6 +64,9 @@ if (WIN32)
 
     set(ENV{INCLUDE} "${WINDOWS_LIBRARIES}/include;$ENV{INCLUDE}")
     set(ENV{LIB} "${WINDOWS_LIBRARIES}/lib64;$ENV{LIB}")
+elseif (NOT APPLE)
+    set(ENV{INCLUDE} "${ICU_ROOT_DIR}/include;$ENV{INCLUDE}")
+    set(ENV{LIB} "${ICU_ROOT_DIR}/lib;$ENV{LIB}")
 endif ()
 
 # -----------------------------------------------------------------------------
