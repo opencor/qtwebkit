@@ -22,7 +22,7 @@ endif ()
 # -----------------------------------------------------------------------------
 if (WIN32)
     set(ADDITIONAL_DEPENDENCIES_FILENAME WebKitLibraries.tar.gz)
-    set(FULL_ADDITIONAL_DEPENDENCIES_FILE ${CMAKE_CURRENT_SOURCE_DIR}/${ADDITIONAL_DEPENDENCIES_FILENAME})
+    set(FULL_ADDITIONAL_DEPENDENCIES_FILE ${CMAKE_SOURCE_DIR}/${ADDITIONAL_DEPENDENCIES_FILENAME})
 
     message("Retrieving additional dependencies for QtWebKit...")
 
@@ -33,12 +33,12 @@ if (WIN32)
 
     if (${STATUS_CODE} EQUAL 0)
         execute_process(COMMAND ${CMAKE_COMMAND} -E tar -xf ${FULL_ADDITIONAL_DEPENDENCIES_FILE}
-                        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+                        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
                         OUTPUT_QUIET)
 
         file(REMOVE ${FULL_ADDITIONAL_DEPENDENCIES_FILE})
 
-        set(WEBKIT_LIBRARIES_DIR ${CMAKE_CURRENT_SOURCE_DIR}/WebKitLibraries/win)
+        set(WEBKIT_LIBRARIES_DIR ${CMAKE_SOURCE_DIR}/WebKitLibraries/win)
         set(ORIG_DIRNAME ${WEBKIT_LIBRARIES_DIR}/bin64)
         set(DEST_DIRNAME ${FULL_LOCAL_EXTERNAL_PACKAGE_DIR}/bin)
 
@@ -48,10 +48,6 @@ if (WIN32)
                                                          ${DEST_DIRNAME}/${ICUIN_SHARED_LIBRARY})
         execute_process(COMMAND ${CMAKE_COMMAND} -E copy ${ORIG_DIRNAME}/${ICUUC_SHARED_LIBRARY}
                                                          ${DEST_DIRNAME}/${ICUUC_SHARED_LIBRARY})
-
-        # Make sure that CMake find our third-party libraries
-
-        set(ENV{CMAKE_PREFIX_PATH} ${WEBKIT_LIBRARIES_DIR})
     else ()
         file(REMOVE ${FULL_ADDITIONAL_DEPENDENCIES_FILE})
         # Note: this is in case we had an HTTP error of sorts, in which case we
@@ -65,10 +61,8 @@ endif ()
 # Make sure that we can find our additional dependencies on Windows
 # -----------------------------------------------------------------------------
 if (WIN32)
-    set(WINDOWS_LIBRARIES ${CMAKE_SOURCE_DIR}/WebKitLibraries/win)
-
-    set(ENV{INCLUDE} "${WINDOWS_LIBRARIES}/include;$ENV{INCLUDE}")
-    set(ENV{LIB} "${WINDOWS_LIBRARIES}/lib64;$ENV{LIB}")
+    set(ENV{INCLUDE} "${WEBKIT_LIBRARIES_DIR}/include;$ENV{INCLUDE}")
+    set(ENV{LIB} "${WEBKIT_LIBRARIES_DIR}/lib64;$ENV{LIB}")
 endif ()
 
 # -----------------------------------------------------------------------------
