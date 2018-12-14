@@ -23,8 +23,6 @@ endif ()
 if (WIN32)
     set(ADDITIONAL_DEPENDENCIES_FILENAME WebKitLibraries.tar.gz)
     set(FULL_ADDITIONAL_DEPENDENCIES_FILE ${CMAKE_CURRENT_SOURCE_DIR}/${ADDITIONAL_DEPENDENCIES_FILENAME})
-    set(WEBKIT_LIBRARIES_DIR ${CMAKE_CURRENT_SOURCE_DIR}/WebKitLibraries/win)
-    set(CMAKE_PREFIX_PATH ${WEBKIT_LIBRARIES_DIR} ${CMAKE_PREFIX_PATH})
 
     message("Retrieving additional dependencies for QtWebKit...")
 
@@ -40,6 +38,7 @@ if (WIN32)
 
         file(REMOVE ${FULL_ADDITIONAL_DEPENDENCIES_FILE})
 
+        set(WEBKIT_LIBRARIES_DIR ${CMAKE_CURRENT_SOURCE_DIR}/WebKitLibraries/win)
         set(ORIG_DIRNAME ${WEBKIT_LIBRARIES_DIR}/bin64)
         set(DEST_DIRNAME ${FULL_LOCAL_EXTERNAL_PACKAGE_DIR}/bin)
 
@@ -49,6 +48,10 @@ if (WIN32)
                                                          ${DEST_DIRNAME}/${ICUIN_SHARED_LIBRARY})
         execute_process(COMMAND ${CMAKE_COMMAND} -E copy ${ORIG_DIRNAME}/${ICUUC_SHARED_LIBRARY}
                                                          ${DEST_DIRNAME}/${ICUUC_SHARED_LIBRARY})
+
+        # Make sure that CMake find our third-party libraries
+
+        set(ENV{CMAKE_PREFIX_PATH} ${WEBKIT_LIBRARIES_DIR})
     else ()
         file(REMOVE ${FULL_ADDITIONAL_DEPENDENCIES_FILE})
         # Note: this is in case we had an HTTP error of sorts, in which case we
