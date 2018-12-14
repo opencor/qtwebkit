@@ -23,6 +23,7 @@ endif ()
 if (WIN32)
     set(ADDITIONAL_DEPENDENCIES_FILENAME WebKitLibraries.tar.gz)
     set(FULL_ADDITIONAL_DEPENDENCIES_FILE ${CMAKE_CURRENT_SOURCE_DIR}/${ADDITIONAL_DEPENDENCIES_FILENAME})
+    set(WEBKIT_LIBRARIES_DIR ${CMAKE_CURRENT_SOURCE_DIR}/WebKitLibraries/win)
 
     message("Retrieving additional dependencies for QtWebKit...")
 
@@ -38,7 +39,7 @@ if (WIN32)
 
         file(REMOVE ${FULL_ADDITIONAL_DEPENDENCIES_FILE})
 
-        set(ORIG_DIRNAME ${CMAKE_CURRENT_SOURCE_DIR}/WebKitLibraries/win/bin64)
+        set(ORIG_DIRNAME ${WEBKIT_LIBRARIES_DIR}/bin64)
         set(DEST_DIRNAME ${FULL_LOCAL_EXTERNAL_PACKAGE_DIR}/bin)
 
         execute_process(COMMAND ${CMAKE_COMMAND} -E copy ${ORIG_DIRNAME}/${ICUDT_SHARED_LIBRARY}
