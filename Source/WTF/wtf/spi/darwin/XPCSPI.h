@@ -56,11 +56,15 @@ typedef void* xpc_connection_t;
 
 typedef const struct _xpc_type_s* xpc_type_t;
 
+#if PLATFORM(IOS) && __has_attribute(noescape)
+#define XPC_NOESCAPE __attribute__((__noescape__))
+#endif
+
 #if COMPILER_SUPPORTS(BLOCKS)
 typedef bool (^xpc_array_applier_t)(size_t index, xpc_object_t);
 typedef bool (^xpc_dictionary_applier_t)(const char *key, xpc_object_t value);
 typedef void (^xpc_handler_t)(xpc_object_t);
-#endif
+#endif // COMPILER_SUPPORTS(BLOCKS)
 
 typedef void (*xpc_connection_handler_t)(xpc_connection_t connection);
 
@@ -77,6 +81,10 @@ typedef void (*xpc_connection_handler_t)(xpc_connection_t connection);
 
 #if USE(APPLE_INTERNAL_SDK)
 #include <xpc/private.h>
+#endif
+
+#if !defined(XPC_NOESCAPE)
+#define XPC_NOESCAPE
 #endif
 
 EXTERN_C const struct _xpc_dictionary_s _xpc_error_connection_invalid;

@@ -14,7 +14,16 @@ set(PROJECT_VERSION_STRING "${PROJECT_VERSION}")
 set(QT_CONAN_DIR "" CACHE PATH "Directory containing conanbuildinfo.cmake and conanfile.txt")
 if (QT_CONAN_DIR)
     include("${QT_CONAN_DIR}/conanbuildinfo.cmake")
+
+    # Remove this workaround when libxslt package is fixed
+    string(REPLACE "include/libxslt" "include" replace_CONAN_INCLUDE_DIRS ${CONAN_INCLUDE_DIRS})
+    set(CONAN_INCLUDE_DIRS ${replace_CONAN_INCLUDE_DIRS})
+
+    # Remove this workaround when libxml2 package is fixed
+    set(_BACKUP_CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH})
     conan_basic_setup()
+    set(CMAKE_MODULE_PATH ${_BACKUP_CMAKE_MODULE_PATH})
+    unset(_BACKUP_CMAKE_MODULE_PATH)
 
     install(CODE "
         set(_conan_imports_dest \${CMAKE_INSTALL_PREFIX})
@@ -259,6 +268,7 @@ option(USE_STATIC_RUNTIME "Use static runtime (MSVC only)" OFF)
 # Private options specific to the Qt port. Changing these options is
 # completely unsupported. They are intended for use only by WebKit developers.
 WEBKIT_OPTION_DEFINE(ENABLE_TOUCH_ADJUSTMENT "Whether to use touch adjustment" PRIVATE ON)
+WEBKIT_OPTION_DEFINE(USE_LIBJPEG "Support JPEG format directly. If it is disabled, QImageReader will be used with possible degradation of user experience" PUBLIC ON)
 
 
 # Public options shared with other WebKit ports. There must be strong reason
@@ -294,6 +304,7 @@ WEBKIT_OPTION_DEFAULT_PORT_VALUE(USE_SYSTEM_MALLOC PUBLIC OFF)
 # we need a value different from the default defined in WebKitFeatures.cmake.
 # Changing these options is completely unsupported.
 WEBKIT_OPTION_DEFAULT_PORT_VALUE(ENABLE_3D_TRANSFORMS PRIVATE ON)
+WEBKIT_OPTION_DEFAULT_PORT_VALUE(ENABLE_CSS_COMPOSITING PRIVATE ON)
 WEBKIT_OPTION_DEFAULT_PORT_VALUE(ENABLE_CSS_IMAGE_SET PRIVATE ON)
 WEBKIT_OPTION_DEFAULT_PORT_VALUE(ENABLE_CSS_REGIONS PRIVATE ON)
 WEBKIT_OPTION_DEFAULT_PORT_VALUE(ENABLE_CSS_SHAPES PRIVATE ON)
@@ -439,23 +450,15 @@ endif ()
 
 find_package(Threads REQUIRED)
 
-if (NOT QT_BUNDLED_JPEG)
-    find_package(JPEG REQUIRED)
+if (USE_LIBJPEG)
+    # Additional names of libjpeg to search (fixed in CMake 3.12.0)
+    set(JPEG_NAMES jpeg-static libjpeg-static)
+    find_package(JPEG)
+    if (NOT JPEG_FOUND)
+        message(FATAL_ERROR "libjpeg not found. Please make sure that CMake can find its header files and libraries, or build with -DUSE_LIBJPEG=OFF with possible degradation of user experience")
+    endif ()
 else ()
-    set(JPEG_FOUND 1)
-    # As of Qt 5.10, libjpeg-turbo shipped as a part of Qt requires using a few macro definitions
-    # WARNING: Keep in sync with libjpeg.pri
-    # FIXME: Change Qt so we can avoid this
-    include(CheckTypeSize)
-    check_type_size(size_t _SIZEOF_SIZE_T)
-    set(JPEG_DEFINITIONS
-        -DC_ARITH_CODING_SUPPORTED=1
-        -DD_ARITH_CODING_SUPPORTED=1
-        -DBITS_IN_JSAMPLE=8
-        -DJPEG_LIB_VERSION=80
-        -DSIZEOF_SIZE_T=${_SIZEOF_SIZE_T}
-    )
-    unset(_SIZEOF_SIZE_T)
+    message(WARNING "USE_LIBJPEG is disabled, will attempt using QImageReader to decode JPEG with possible degradation of user experience")
 endif ()
 
 if (NOT QT_BUNDLED_PNG)
@@ -616,6 +619,9 @@ endif ()
 find_package(Qt5 ${REQUIRED_QT_VERSION} REQUIRED COMPONENTS ${QT_REQUIRED_COMPONENTS})
 
 CHECK_QT5_PRIVATE_INCLUDE_DIRS(Gui private/qhexstring_p.h)
+if (Qt5_VERSION VERSION_GREATER 5.10.1)
+    CHECK_QT5_PRIVATE_INCLUDE_DIRS(Network private/http2protocol_p.h)
+endif ()
 if (ENABLE_WEBKIT2)
     CHECK_QT5_PRIVATE_INCLUDE_DIRS(Quick private/qsgrendernode_p.h)
 endif ()
@@ -796,6 +802,15 @@ if (USE_LIBHYPHEN)
     find_package(Hyphen REQUIRED)
     if (NOT HYPHEN_FOUND)
        message(FATAL_ERROR "libhyphen is needed for USE_LIBHYPHEN.")
+    endif ()
+endif ()
+
+if (USE_WOFF2)
+    find_package(WOFF2Dec 1.0.1)
+    if (WOFF2DEC_FOUND)
+        message(STATUS "Using system WOFF2Dec library.")
+    else ()
+        message(STATUS "WOFF2Dec not found, using the bundled library.")
     endif ()
 endif ()
 
