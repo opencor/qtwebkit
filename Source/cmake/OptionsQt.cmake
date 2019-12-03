@@ -13,10 +13,14 @@ set(PROJECT_VERSION_STRING "${PROJECT_VERSION}")
 
 set(QT_CONAN_DIR "" CACHE PATH "Directory containing conanbuildinfo.cmake and conanfile.txt")
 if (QT_CONAN_DIR)
+    find_program(CONAN_COMMAND NAMES conan PATHS $ENV{PIP3_PATH})
+    if (NOT CONAN_COMMAND)
+        message(FATAL_ERROR "conan executable not found. Make sure that Conan is installed and available in PATH")
+    endif ()
     include("${QT_CONAN_DIR}/conanbuildinfo.cmake")
 
     # Remove this workaround when libxslt package is fixed
-    string(REPLACE "include/libxslt" "include" replace_CONAN_INCLUDE_DIRS ${CONAN_INCLUDE_DIRS})
+    string(REPLACE "include/libxslt" "include" replace_CONAN_INCLUDE_DIRS "${CONAN_INCLUDE_DIRS}")
     set(CONAN_INCLUDE_DIRS ${replace_CONAN_INCLUDE_DIRS})
 
     # Remove this workaround when libxml2 package is fixed
@@ -24,6 +28,15 @@ if (QT_CONAN_DIR)
     conan_basic_setup()
     set(CMAKE_MODULE_PATH ${_BACKUP_CMAKE_MODULE_PATH})
     unset(_BACKUP_CMAKE_MODULE_PATH)
+
+    # Because we've reset CMAKE_MODULE_PATH, FindZLIB from Conan is not used, which causes error with MinGW
+    if (NOT QT_BUNDLED_ZLIB)
+        if (NOT CONAN_ZLIB_ROOT)
+            message(FATAL_ERROR "CONAN_ZLIB_ROOT is not set")
+        endif ()
+        set(ZLIB_ROOT ${CONAN_ZLIB_ROOT})
+        message(STATUS "ZLIB_ROOT: ${ZLIB_ROOT}")
+    endif ()
 
     install(CODE "
         set(_conan_imports_dest \${CMAKE_INSTALL_PREFIX})
@@ -33,10 +46,13 @@ if (QT_CONAN_DIR)
             set(_conan_imports_dest \"\${_absolute_destdir}\${_conan_imports_dest}\")
         endif ()
 
+        message(\"Importing dependencies from conan to \${_conan_imports_dest}\")
         execute_process(
-            COMMAND conan imports -f \"${QT_CONAN_DIR}/conanfile.txt\" --dest \${_conan_imports_dest}
+            COMMAND \"${CONAN_COMMAND}\" imports --import-folder \${_conan_imports_dest} \"${QT_CONAN_DIR}/conanfile.txt\"
             WORKING_DIRECTORY \"${QT_CONAN_DIR}\"
+            RESULT_VARIABLE _conan_imports_result
         )
+        message(\"conan imports result: \${_conan_imports_result}\")
 
         set(_conan_imports_manifest \"\${_conan_imports_dest}/conan_imports_manifest.txt\")
         if (EXISTS \${_conan_imports_manifest})
@@ -140,6 +156,24 @@ macro(QTWEBKIT_GENERATE_MOC_FILES_H _target)
     endforeach ()
 endmacro()
 
+macro(QTWEBKIT_SEPARATE_DEBUG_INFO _target _target_debug)
+    if (UNIX AND NOT APPLE)
+        if (NOT CMAKE_OBJCOPY)
+            message(WARNING "CMAKE_OBJCOPY is not defined - debug information will not be split")
+        else ()
+            set(_target_file "$<TARGET_FILE:${_target}>")
+            set(${_target_debug} "${_target_file}.debug")
+            add_custom_command(TARGET ${_target} POST_BUILD
+                COMMAND ${CMAKE_OBJCOPY} --only-keep-debug ${_target_file} ${${_target_debug}}
+                COMMAND ${CMAKE_OBJCOPY} --strip-debug ${_target_file}
+                COMMAND ${CMAKE_OBJCOPY} --add-gnu-debuglink=${${_target_debug}} ${_target_file}
+                VERBATIM
+            )
+            unset(_target_file)
+        endif ()
+    endif ()
+endmacro()
+
 set(CMAKE_MACOSX_RPATH ON)
 
 add_definitions(-DBUILDING_QT__=1)
@@ -153,6 +187,7 @@ if (COMPILER_IS_GCC_OR_CLANG)
     add_definitions(-DQT_NO_DYNAMIC_CAST)
 endif ()
 
+# Align build product names with QMake conventions
 if (WIN32)
     if (${CMAKE_BUILD_TYPE} MATCHES "Debug")
         set(CMAKE_DEBUG_POSTFIX d)
@@ -160,6 +195,8 @@ if (WIN32)
 
     set(CMAKE_SHARED_LIBRARY_PREFIX "")
     set(CMAKE_SHARED_MODULE_PREFIX "")
+    # QMake doesn't treat import libraries as a separate product kind
+    set(CMAKE_IMPORT_LIBRARY_SUFFIX "${CMAKE_STATIC_LIBRARY_SUFFIX}")
 endif ()
 
 WEBKIT_OPTION_BEGIN()
@@ -692,6 +729,19 @@ endif ()
 
 if (WIN32 AND COMPILER_IS_GCC_OR_CLANG)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-keep-inline-dllexport")
+endif ()
+
+# See also FORCE_DEBUG_INFO in Source/PlatformQt.cmake
+if (FORCE_DEBUG_INFO)
+    if (COMPILER_IS_GCC_OR_CLANG)
+        # Enable debug info in Release builds
+        set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -g")
+        set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -g")
+    endif ()
+    if (USE_LD_GOLD)
+       set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wl,--gdb-index")
+       set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wl,--gdb-index")
+    endif ()
 endif ()
 
 if (APPLE)
