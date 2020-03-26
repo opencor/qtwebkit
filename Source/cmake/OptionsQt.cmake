@@ -18,25 +18,7 @@ if (QT_CONAN_DIR)
         message(FATAL_ERROR "conan executable not found. Make sure that Conan is installed and available in PATH")
     endif ()
     include("${QT_CONAN_DIR}/conanbuildinfo.cmake")
-
-    # Remove this workaround when libxslt package is fixed
-    string(REPLACE "include/libxslt" "include" replace_CONAN_INCLUDE_DIRS "${CONAN_INCLUDE_DIRS}")
-    set(CONAN_INCLUDE_DIRS ${replace_CONAN_INCLUDE_DIRS})
-
-    # Remove this workaround when libxml2 package is fixed
-    set(_BACKUP_CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH})
-    conan_basic_setup()
-    set(CMAKE_MODULE_PATH ${_BACKUP_CMAKE_MODULE_PATH})
-    unset(_BACKUP_CMAKE_MODULE_PATH)
-
-    # Because we've reset CMAKE_MODULE_PATH, FindZLIB from Conan is not used, which causes error with MinGW
-    if (NOT QT_BUNDLED_ZLIB)
-        if (NOT CONAN_ZLIB_ROOT)
-            message(FATAL_ERROR "CONAN_ZLIB_ROOT is not set")
-        endif ()
-        set(ZLIB_ROOT ${CONAN_ZLIB_ROOT})
-        message(STATUS "ZLIB_ROOT: ${ZLIB_ROOT}")
-    endif ()
+    conan_basic_setup(TARGETS)
 
     install(CODE "
         set(_conan_imports_dest \${CMAKE_INSTALL_PREFIX})
@@ -157,14 +139,21 @@ macro(QTWEBKIT_GENERATE_MOC_FILES_H _target)
 endmacro()
 
 macro(QTWEBKIT_SEPARATE_DEBUG_INFO _target _target_debug)
-    if (UNIX AND NOT APPLE)
+    if (MINGW OR UNIX AND NOT APPLE) # Not using COMPILER_IS_GCC_OR_CLANG because other ELF compilers may work as well
         if (NOT CMAKE_OBJCOPY)
             message(WARNING "CMAKE_OBJCOPY is not defined - debug information will not be split")
         else ()
             set(_target_file "$<TARGET_FILE:${_target}>")
             set(${_target_debug} "${_target_file}.debug")
+
+            if (DWZ_FOUND AND NOT SKIP_DWZ)
+                set(EXTRACT_DEBUG_INFO_COMMAND COMMAND ${DWZ_EXECUTABLE} -L 1000000000 -o ${${_target_debug}} ${_target_file})
+            else ()
+                set(EXTRACT_DEBUG_INFO_COMMAND COMMAND ${CMAKE_OBJCOPY} --only-keep-debug ${_target_file} ${${_target_debug}})
+            endif ()
+
             add_custom_command(TARGET ${_target} POST_BUILD
-                COMMAND ${CMAKE_OBJCOPY} --only-keep-debug ${_target_file} ${${_target_debug}}
+                ${EXTRACT_DEBUG_INFO_COMMAND}
                 COMMAND ${CMAKE_OBJCOPY} --strip-debug ${_target_file}
                 COMMAND ${CMAKE_OBJCOPY} --add-gnu-debuglink=${${_target_debug}} ${_target_file}
                 VERBATIM
@@ -550,6 +539,13 @@ else ()
     find_package(LibXml2 2.8.0 REQUIRED)
     if (ENABLE_XSLT)
         find_package(LibXslt 1.1.7 REQUIRED)
+    endif ()
+endif ()
+
+if (UNIX AND NOT APPLE AND CMAKE_OBJCOPY AND NOT SKIP_DWZ)
+    find_package(Dwz 0.13)
+    if (DWZ_FOUND)
+        message(STATUS "WARNING: dwz may use a lot of RAM - build with -DSKIP_DWZ=ON if you don't have enough")
     endif ()
 endif ()
 

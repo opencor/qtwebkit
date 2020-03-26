@@ -1,5 +1,5 @@
 #!/usr/bin/env perl
-# Copyright (C) 2016 Konstantin Tokarev <annulen@yandex.ru>
+# Copyright (C) 2019 Konstantin Tokarev <annulen@yandex.ru>
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -22,42 +22,33 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 # THE POSSIBILITY OF SUCH DAMAGE.
 
-use Cwd;
-use File::Basename;
+use YAML::XS;
 use strict;
 use warnings;
 
-sub usage {
-    my $msg = shift || "";
-    die $msg . "Usage: cd target/repo/path; $0 src/repo/path";
+my $qt_ref = shift @ARGV or die "Usage: $0 <qt_ref>";
+my @qt_dependencies = qw(qtbase qtdeclarative qtlocation qtmultimedia qtsensors qtwebchannel);
+
+
+sub qtModuleRef {
+    my ($module, $tag) = @_;
+
+    -d $module or die "No such directory $module - this script must be run in qt5";
+    my $output = `git ls-tree $tag $module`;
+
+    # Format is "<mode> SP <type> SP <object> TAB <file>"
+    # For submodule <type> is "commit"
+    $output =~ /^(.*) commit (.*)\t(.*)/ or die "git ls-tree output is malformed for $module";
+    $3 eq $module or die "Module name in git ls-tree does not match $module";
+    return $2;
 }
 
-scalar @ARGV == 0 || usage();
--f "ChangeLog" && die "This script must be run in snapshots repository";
--d ".git" || usage();
+print "# This file is generated automatically by Tools/qt/generate-dependencies-yaml\n";
+print "# Qt modules git ref: $qt_ref\n";
+print "# All changes will be lost!\n";
 
-`LC_ALL=C LANG=C git status` =~ "nothing to commit, working tree clean" or die "Target working tree is dirty";
-
-my $src_repo = dirname(dirname(dirname(__FILE__)));
-my $target_repo = getcwd();
-
-chdir $src_repo;
-(-f "ChangeLog" && -x "Tools/gtk/make-dist.py") or usage("Target repository path is invalid!\n");
-my $commit = `git rev-parse HEAD` or usage("Cannot get HEAD revision in target repo!\n");
-chomp $commit;
-
-my @commands = (
-    "Tools/gtk/make-dist.py -t snapshot Tools/qt/manifest.txt",
-    "cd $target_repo",
-    "git rm -rf *",
-    "git checkout HEAD dist", # hack to avoid removing dist
-    "tar -xf $src_repo/snapshot.tar --strip-components=1",
-    "git add -A",
-    "rm $src_repo/snapshot.tar",
-    "git commit -m 'Import QtWebKit commit $commit'"
-);
-
-my $cmd = join " && ", @commands;
-print "Executing $cmd\n";
-
-exec $cmd;
+my $data;
+for my $module (@qt_dependencies) {
+    $data->{dependencies}->{"../$module"} = { ref => qtModuleRef($module, $qt_ref), required => "true" };
+}
+print Dump $data;
